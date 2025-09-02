@@ -1,0 +1,57 @@
+name: Flutter Build APK
+
+on:
+  workflow_dispatch: # 允许手动触发工作流
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 检出代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 设置 Java 环境
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 3. 设置 Flutter 环境
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+          cache-key: flutter-pub-cache-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          cache-path: ${{ runner.tool_cache }}/flutter/pub-cache
+
+      # 4. 获取依赖
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 5. 生成 Hive 适配器代码
+      - name: Generate Hive adapters
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      # 6. 构建 APK
+      - name: Build APK
+        run: flutter build apk --release --no-pub
+
+      # 7. 上传 APK 作为工作流产物
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: personal-finance-app
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+
+      # 8. 显示构建成功信息
+      - name: Build success notification
+        run: echo "✅ Flutter APK 构建成功！请在 Artifacts 区域下载 APK 文件。"
